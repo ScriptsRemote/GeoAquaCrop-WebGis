@@ -218,7 +218,7 @@ def prepare_real(job: Job, work: Path, aoi_path: Path) -> dict:
             preprocess_run(
                 domain_shape_path=str(aoi_path),
                 start_year=int(p["start_year"]), end_year=int(p["end_year"]),
-                api_token=token if step == "climate" else "",
+                api_token=token,          # the toolchain validates it on every step
                 cell_resolution=float(p["resolution"]),
                 preprocess=[step],
                 nasanex_model=clim.get("nasanex_model", "GFDL-CM4"),

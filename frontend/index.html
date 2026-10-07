@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GeoAquaCrop</title>
+<meta name="description" content="GeoAquaCrop WebGIS: run gridded AquaCrop over a drawn or uploaded area. GeoAquaCrop by C. Bowden, J. Láng-Ritter, S. H. Hosseini, E. Alkio, H. Tenkanen and T. Foster.">
+<meta name="author" content="GeoAquaCrop: Christopher Bowden, Josias Láng-Ritter, Seyed Hossein Hosseini, E. Alkio, Henrikki Tenkanen, Timothy Foster">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232F6B45'/%3E%3Cpath d='M16 26V12M16 16c-4 0-7-3-7-7 4 0 7 3 7 7zm0 4c4 0 7-3 7-7-4 0-7 3-7 7z' stroke='%23fff' stroke-width='2.2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="vendor/fonts/fonts.css">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="vendor/leaflet-draw/leaflet.draw.css">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- ============================== left: guided steps ============================== -->
+  <aside class="panel panel-left" id="panel-left">
+    <header class="brand">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7"/><path d="M16 26V12M16 16c-4 0-7-3-7-7 4 0 7 3 7 7zm0 4c4 0 7-3 7-7-4 0-7 3-7 7z"/></svg>
+      <div class="brand-text">
+        <h1>GeoAquaCrop</h1>
+        <p data-i18n="brand.sub">AquaCrop em grade sobre a sua área</p>
+      </div>
+      <div class="lang-switch" role="group" data-i18n-aria="lang.label">
+        <button type="button" data-lang="pt" aria-pressed="true" lang="pt">PT</button>
+        <button type="button" data-lang="en" aria-pressed="false" lang="en">EN</button>
+      </div>
+      <button class="icon-btn only-mobile" data-close-panel="left" data-i18n-aria="panel.close">✕</button>
+    </header>
+
+    <ol class="steps" id="steps">
+      <li class="step" data-step="1">
+        <button class="step-head" aria-expanded="true">
+          <span class="step-num">1</span>
+          <span class="step-title" data-i18n="s1.title"></span>
+          <span class="step-summary" id="sum-1"></span>
+        </button>
+        <div class="step-body">
+          <p class="guide" data-i18n="s1.guide"></p>
+          <div class="btn-grid">
+            <button class="btn" id="btn-draw-poly"><svg viewBox="0 0 20 20"><path d="M4 15 7 4l9 3-2 9z"/></svg><span data-i18n="s1.draw_poly"></span></button>
+            <button class="btn" id="btn-draw-rect"><svg viewBox="0 0 20 20"><rect x="3.5" y="5" width="13" height="10"/></svg><span data-i18n="s1.draw_rect"></span></button>
+            <label class="btn" for="file-input" tabindex="0" id="btn-upload"><svg viewBox="0 0 20 20"><path d="M10 13V3m-4 4 4-4 4 4M4 13v4h12v-4"/></svg><span data-i18n="s1.upload"></span></label>
+            <button class="btn" id="btn-focus-search"><svg viewBox="0 0 20 20"><circle cx="8.5" cy="8.5" r="5"/><path d="m12.5 12.5 4 4"/></svg><span data-i18n="s1.search"></span></button>
+          </div>
+          <input type="file" id="file-input" accept=".geojson,.json,.kml,.kmz,.zip,.gpkg" hidden>
+          <p class="hint" data-i18n="s1.formats"></p>
+          <div class="aoi-card" id="aoi-card" hidden>
+            <div class="aoi-row"><strong id="aoi-name"></strong><button class="link" id="btn-aoi-clear" data-i18n="s1.remove"></button></div>
+            <dl class="facts">
+              <div><dt data-i18n="s1.area"></dt><dd id="aoi-area">–</dd></div>
+              <div><dt data-i18n="s1.parts"></dt><dd id="aoi-parts">–</dd></div>
+              <div><dt data-i18n="s1.extent"></dt><dd id="aoi-extent">–</dd></div>
+            </dl>
+            <ul class="warnings" id="aoi-warnings"></ul>
+          </div>
+        </div>
+      </li>
+
+      <li class="step" data-step="2">
+        <button class="step-head" aria-expanded="false">
+          <span class="step-num">2</span>
+          <span class="step-title" data-i18n="s2.title"></span>
+          <span class="step-summary" id="sum-2"></span>
+        </button>
+        <div class="step-body">
+          <p class="guide" data-i18n="s2.guide"></p>
+          <label class="field"><span data-i18n="s2.crop"></span><select id="in-crop"></select></label>
+          <fieldset class="field">
+            <legend data-i18n="s2.regime"></legend>
+            <div class="seg">
+              <label><input type="radio" name="irrigation" value="rainfed" checked><span data-i18n="irr.rainfed"></span></label>
+              <label><input type="radio" name="irrigation" value="irrigated"><span data-i18n="irr.irrigated"></span></label>
+            </div>
+          </fieldset>
+          <p class="hint" id="irr-hint"></p>
+        </div>
+      </li>
+
+      <li class="step" data-step="3">
+        <button class="step-head" aria-expanded="false">
+          <span class="step-num">3</span>
+          <span class="step-title" data-i18n="s3.title"></span>
+          <span class="step-summary" id="sum-3"></span>
+        </button>
+        <div class="step-body">
+          <p class="guide" data-i18n="s3.guide"></p>
+          <div class="row2">
+            <label class="field"><span data-i18n="s3.start"></span><input type="number" id="in-start" min="1950" max="2100" step="1"></label>
+            <label class="field"><span data-i18n="s3.end"></span><input type="number" id="in-end" min="1950" max="2100" step="1"></label>
+          </div>
+          <div class="source-box" id="source-box"></div>
+          <div id="agera5-box">
+            <label class="field"><span data-i18n="s3.token"></span>
+              <input type="password" id="in-token" autocomplete="off">
+            </label>
+            <p class="hint" id="token-hint"></p>
+          </div>
+          <div id="nex-box" hidden>
+            <div class="row2">
+              <label class="field"><span data-i18n="s3.model"></span><select id="in-model"></select></label>
+              <label class="field"><span data-i18n="s3.scenario"></span><select id="in-ssp"></select></label>
+            </div>
+            <p class="hint" data-i18n="s3.model_hint"></p>
+          </div>
+          <label class="field"><span data-i18n="s3.res"></span><select id="in-res"></select></label>
+          <p class="estimate" id="estimate"></p>
+
+          <details class="advanced">
+            <summary data-i18n="s3.advanced"></summary>
+            <label class="check"><input type="checkbox" id="in-soilfix"><span data-i18n-html="s3.soilfix"></span></label>
+            <label class="check"><input type="checkbox" id="in-co2"><span data-i18n-html="s3.co2"></span></label>
+            <label class="check"><input type="checkbox" id="in-cache" checked><span data-i18n-html="s3.cache"></span></label>
+          </details>
+        </div>
+      </li>
+
+      <li class="step" data-step="4">
+        <button class="step-head" aria-expanded="false">
+          <span class="step-num">4</span>
+          <span class="step-title" data-i18n="s4.title"></span>
+          <span class="step-summary" id="sum-4"></span>
+        </button>
+        <div class="step-body">
+          <fieldset class="field">
+            <legend data-i18n="s4.inputs"></legend>
+            <div class="seg">
+              <label><input type="radio" name="mode" value="real" checked><span data-i18n="mode.real"></span></label>
+              <label><input type="radio" name="mode" value="demo"><span data-i18n="mode.demo"></span></label>
+            </div>
+          </fieldset>
+          <p class="guide" id="mode-guide"></p>
+          <button class="btn btn-primary btn-run" id="btn-run" disabled></button>
+          <p class="hint" id="run-blocker"></p>
+
+          <div class="progress" id="progress" hidden>
+            <div class="progress-head">
+              <strong id="job-status"></strong>
+              <button class="link danger" id="btn-cancel" data-i18n="s4.cancel"></button>
+            </div>
+            <ol class="pipeline" id="pipeline"></ol>
+            <details class="log"><summary data-i18n="s4.log"></summary><pre id="log"></pre></details>
+          </div>
+        </div>
+      </li>
+    </ol>
+
+    <section class="history">
+      <div class="history-head">
+        <h2 data-i18n="hist.title"></h2>
+        <button class="link" id="btn-cache" data-i18n="hist.cache"></button>
+      </div>
+      <ul id="history-list" class="history-list"></ul>
+    </section>
+
+    <footer class="credits-line">
+      <span data-i18n="footer.based"></span>
+      <button class="link" id="btn-credits" data-i18n="footer.credits"></button>
+    </footer>
+  </aside>
+
+  <!-- ============================== map ============================== -->
+  <main class="map-wrap">
+    <div id="map" role="application" data-i18n-aria="map.aria"></div>
+
+    <div class="map-top">
+      <button class="icon-btn map-btn only-mobile" data-open-panel="left" data-i18n-aria="panel.open">
+        <svg viewBox="0 0 20 20"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+      </button>
+      <form class="search" id="search-form" role="search">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5"/><path d="m12.5 12.5 4 4"/></svg>
+        <input id="search-input" type="search" autocomplete="off" data-i18n-ph="search.placeholder" data-i18n-aria="search.aria">
+        <ul class="search-results" id="search-results" hidden></ul>
+      </form>
+      <button class="icon-btn map-btn" id="btn-open-results" data-open-panel="right" data-i18n-aria="results.open" hidden>
+        <svg viewBox="0 0 20 20"><path d="M4 16V9m4 7V5m4 11v-5m4 5V7"/></svg>
+      </button>
+    </div>
+
+    <div class="legend" id="legend" hidden></div>
+    <div class="drop-hint" id="drop-hint" hidden><span data-i18n="drop.hint"></span></div>
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  </main>
+
+  <!-- ============================== right: results ============================== -->
+  <aside class="panel panel-right" id="panel-right" data-collapsed="true">
+    <header class="results-head">
+      <div class="results-titles">
+        <h2 id="res-title"></h2>
+        <p id="res-sub"></p>
+      </div>
+      <div class="head-actions">
+        <div class="menu">
+          <button class="btn btn-small" id="btn-downloads" aria-haspopup="true" aria-expanded="false" data-i18n="res.download" disabled></button>
+          <ul class="menu-list" id="downloads" hidden></ul>
+        </div>
+        <button class="icon-btn" data-close-panel="right" data-i18n-aria="results.collapse">
+          <svg viewBox="0 0 20 20"><path d="m8 5 5 5-5 5"/></svg>
+        </button>
+      </div>
+    </header>
+    <div class="results-body" id="results-body">
+      <div class="empty-state" id="res-empty">
+        <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 40V20m0 6c-6 0-10-4-10-10 6 0 10 4 10 10zm0 6c6 0 10-4 10-10-6 0-10 4-10 10z"/></svg>
+        <p data-i18n="res.empty"></p>
+      </div>
+      <div id="res-content" hidden></div>
+    </div>
+  </aside>
+</div>
+
+<dialog class="modal" id="modal" aria-labelledby="modal-title">
+  <header class="modal-head">
+    <h2 id="modal-title"></h2>
+    <div class="head-actions">
+      <button class="btn btn-small" id="modal-csv" data-i18n="modal.csv"></button>
+      <button class="icon-btn" id="modal-close" data-i18n-aria="modal.close">✕</button>
+    </div>
+  </header>
+  <p class="modal-desc" id="modal-desc"></p>
+  <div class="modal-chart"><canvas id="modal-canvas"></canvas></div>
+  <details class="modal-table-wrap"><summary data-i18n="modal.table"></summary><div id="modal-table"></div></details>
+</dialog>
+
+<dialog class="modal modal-small" id="cache-modal" aria-labelledby="cache-title">
+  <header class="modal-head"><h2 id="cache-title" data-i18n="cache.title"></h2>
+    <button class="icon-btn" id="cache-close" data-i18n-aria="modal.close">✕</button></header>
+  <div id="cache-body"></div>
+</dialog>
+
+<dialog class="modal modal-credits" id="credits-modal" aria-labelledby="credits-title">
+  <header class="modal-head"><h2 id="credits-title" data-i18n="cr.title"></h2>
+    <button class="icon-btn" id="credits-close" data-i18n-aria="modal.close">✕</button></header>
+  <div class="credits-body">
+    <p data-i18n-html="cr.intro"></p>
+    <ul class="people">
+      <li><strong>Christopher (Chris) Bowden</strong><span>University of Manchester · <span data-i18n="cr.maintainer"></span></span></li>
+      <li><strong>Josias Láng-Ritter</strong><span>Aalto University</span></li>
+      <li><strong>Seyed Hossein Hosseini</strong><span>Aalto University</span></li>
+      <li><strong>E. Alkio</strong><span></span></li>
+      <li><strong>Henrikki Tenkanen</strong><span>Aalto University</span></li>
+      <li><strong>Timothy (Tim) Foster</strong><span>University of Manchester</span></li>
+    </ul>
+    <h3 data-i18n="cr.cite"></h3>
+    <p data-i18n="cr.cite_text"></p>
+    <blockquote>Láng-Ritter, J., Bowden, C., Hosseini, S., Alkio, E., Tenkanen, H. &amp; Foster, T. GeoAquaCrop: Large-scale agricultural crop modelling using open global data <span data-i18n="cr.preprint"></span>.
+      <br>Kelly, T. D. &amp; Foster, T. (2021). AquaCrop-OSPy: Bridging the gap between research and practice in crop-water modelling. <em>Agricultural Water Management</em> 254, 106976. doi:10.1016/j.agwat.2021.106976</blockquote>
+    <h3 data-i18n="cr.model"></h3>
+    <p>AquaCrop — FAO (Steduto, Hsiao, Raes &amp; Fereres, 2009). AquaCrop-OS — Foster et al. (2017). AquaCrop-OSPy — Kelly &amp; Foster (2021).</p>
+    <h3 data-i18n="cr.data"></h3>
+    <p data-i18n="cr.data_text"></p>
+    <h3 data-i18n="cr.map"></h3>
+    <p data-i18n="cr.map_text"></p>
+    <p class="hint" data-i18n="cr.licence"></p>
+  </div>
+</dialog>
+
+<script src="vendor/leaflet/leaflet.js"></script>
+<script src="vendor/leaflet-draw/leaflet.draw.js"></script>
+<script src="vendor/chart.umd.js"></script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "_leia": "Copie para config.json e ajuste. Todos os campos são opcionais.",
+  "cds_api_token": "",
+  "google_maps_api_key": "",
+  "workers": 0,
+  "max_cells": 20000,
+  "keep_area_cache": true,
+  "data_dir": "data",
+  "host": "127.0.0.1",
+  "port": 8050,
+  "nominatim_contact": "seu-email@exemplo.com"
+}
